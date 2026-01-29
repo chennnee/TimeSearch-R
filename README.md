@@ -6,6 +6,8 @@
 
 ## 📰 News
 
+🔥 **[2026/01/26]** Our [TimeSearch-R](https://arxiv.org/abs/2511.05489) is accepted by ICLR 2026! 🎉
+
 🔥 **[2025/11/13]** Our [Model Checkpoint](https://huggingface.co/Time-Search/TimeSearch-R) is uploaded!
 
 ## 👁️ Overview
