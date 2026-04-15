@@ -1,27 +1,25 @@
-from .v1 import reward_functions as v1, reward_weights as v1_weights
-from .v2 import reward_functions as v2, reward_weights as v2_weights
-from .v3 import reward_functions as v3, reward_weights as v3_weights
-from .v3_1 import reward_functions as v3_1, reward_weights as v3_1_weights
-from .v4 import reward_functions as v4, reward_weights as v4_weights
-from .v5 import reward_functions as v5, reward_weights as v5_weights
-from .v5_1 import reward_functions as v5_1, reward_weights as v5_1_weights
-from .v6 import reward_functions as v6, reward_weights as v6_weights
-from .v7 import reward_functions as v7, reward_weights as v7_weights
+# __init__.py
 
-REWARD_FUNCTIONS_REGISTRY = {
-    "v1": (v1, v1_weights),
-    "v2": (v2, v2_weights),
-    "v3": (v3, v3_weights),
-    "v3_1": (v3_1, v3_1_weights),
-    "v4": (v4, v4_weights),
-    "v5": (v5, v5_weights),
-    "v5_1": (v5_1, v5_1_weights),
-    "v6": (v6, v6_weights),
-    "v7": (v7, v7_weights),
+REWARD_MODULES = {
+    "v1":   (".v1",   "reward_functions", "reward_weights"),
+    "v2":   (".v2",   "reward_functions", "reward_weights"),
+    "v3":   (".v3",   "reward_functions", "reward_weights"),
+    "v3_1": (".v3_1", "reward_functions", "reward_weights"),
+    "v4":   (".v4",   "reward_functions", "reward_weights"),
+    "v5":   (".v5",   "reward_functions", "reward_weights"),
+    "v5_1": (".v5_1", "reward_functions", "reward_weights"),
+    "v6":   (".v6",   "reward_functions", "reward_weights"),
+    "v7":   (".v7",   "reward_functions", "reward_weights"),
 }
 
-
 def get_reward_functions(version: str):
-    if version not in REWARD_FUNCTIONS_REGISTRY:
+    if version not in REWARD_MODULES:
         raise ValueError(f"Invalid reward version: {version}")
-    return REWARD_FUNCTIONS_REGISTRY[version]
+    
+    module_path, func_name, weight_name = REWARD_MODULES[version]
+    
+    # 只在真正需要时才 import 对应版本
+    import importlib
+    mod = importlib.import_module(module_path, package=__package__)
+    
+    return getattr(mod, func_name), getattr(mod, weight_name)

@@ -41,7 +41,7 @@ class DppTimeSelector(object):
             di2s[j] = -float('inf')
         return select_idx
 
-    def __call__(self, frames: List[Image], prompts: List[str], frame_embeddings: List[torch.Tensor] = None):
+    def __call__(self, frames: List[Image.Image], prompts: List[str], frame_embeddings: List[torch.Tensor] = None):
         try:
             if isinstance(prompts, str):
                 prompts = [prompts]

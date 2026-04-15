@@ -403,7 +403,7 @@ class GRPOTrainer(Trainer):
         # Models
         # Trained model
         model_init_kwargs = args.model_init_kwargs or {}
-        model_init_kwargs["attn_implementation"] = "flash_attention_2"
+        model_init_kwargs["attn_implementation"] = "eager"
         model_init_kwargs["torch_dtype"] = torch.bfloat16
         if isinstance(model, str):
             model_id = model
@@ -418,12 +418,16 @@ class GRPOTrainer(Trainer):
                     "Invalid `torch_dtype` passed to `GRPOConfig`. Expected either 'auto' or a string representing "
                     f"a `torch.dtype` (e.g., 'float32'), but got {torch_dtype}."
                 )
-            # Disable caching if gradient checkpointing is enabled (not supported)
-            model_init_kwargs["use_cache"] = (
-                False if args.gradient_checkpointing else model_init_kwargs.get("use_cache")
-            )
+            # Disable caching if gradient checkpointing is enabled
+            use_cache = False if args.gradient_checkpointing else model_init_kwargs.get("use_cache", None)
+
+            # 不要把 use_cache 传给 from_pretrained
+            model_init_kwargs.pop("use_cache", None)
+
             if "Qwen2-VL" in model_id or "Qwen2.5-VL" in model_id:
                 model = Qwen2_5_VLForConditionalGeneration.from_pretrained(model_id, **model_init_kwargs)
+                if use_cache is not None:
+                    model.config.use_cache = use_cache
             else:
                 model = AutoModelForCausalLM.from_pretrained(model, **model_init_kwargs)
         else:
@@ -562,6 +566,8 @@ class GRPOTrainer(Trainer):
         # "Could not estimate the number of tokens of the input, floating-point operations will not be computed." To
         # suppress this warning, we set the "estimate_tokens" key in the model's "warnings_issued" dictionary to True.
         # This acts as a flag to indicate that the warning has already been issued.
+        if not hasattr(model, "warnings_issued"):
+            model.warnings_issued = {}
         model.warnings_issued["estimate_tokens"] = True
 
         super().__init__(
@@ -671,19 +677,28 @@ class GRPOTrainer(Trainer):
                         ]
                     )
 
-                self.llm = LLM(
-                    model=model.name_or_path,
-                    tensor_parallel_size=args.vllm_tensor_parallel_size,
-                    gpu_memory_utilization=self.vllm_gpu_memory_utilization,
-                    max_num_seqs=self.args.per_device_train_batch_size
-                    * self.vllm_tensor_parallel_size
-                    * self.args.gradient_accumulation_steps,
-                    max_model_len=self.max_prompt_length + self.max_completion_length,
-                    distributed_executor_backend="external_launcher",
-                    # Feed identical seed for tp groups to ensure sampling results are the same across workers
-                    seed=self.accelerator.process_index // self.vllm_tensor_parallel_size,
-                    limit_mm_per_prompt={"image": 1024, "video": 10},
-                )
+            self.llm = LLM(
+                model=model.name_or_path,
+                tensor_parallel_size=args.vllm_tensor_parallel_size,
+                gpu_memory_utilization=self.vllm_gpu_memory_utilization,
+                max_num_seqs=self.args.per_device_train_batch_size
+                * self.vllm_tensor_parallel_size
+                * self.args.gradient_accumulation_steps,
+
+                # 原来没写，手动加上
+                max_num_batched_tokens=8192,
+
+                max_model_len=self.max_prompt_length + self.max_completion_length,
+                enforce_eager=True,
+                distributed_executor_backend="external_launcher",
+                seed=self.accelerator.process_index // self.vllm_tensor_parallel_size,
+
+                # 别再用 image=1024, video=10 这种离谱上界
+                limit_mm_per_prompt={"image": 16, "video": 1},
+
+                # 限制视觉 item 的最大像素预算，间接降低单 item token 上界
+                mm_processor_kwargs={"max_pixels": 256 * 28 * 28},
+            )
             # vLLM specific sampling arguments
             self.guided_decoding_regex = args.vllm_guided_decoding_regex
 

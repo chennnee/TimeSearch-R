@@ -1,0 +1,2 @@
+{"id":"demo-0001","video":"/datachen/250010092/ChenHongjun/TimeSearch-R/timesearchr_datasets/video1.mp4","question":"What color is the car?\nA. Red\nB. Blue\nC. White\nD. Black","type":"multiple_choice","target":{"answer":"B","time":[[3.5,6.0]]}}
+{"id":"demo-0002","video":"/datachen/250010092/ChenHongjun/TimeSearch-R/timesearchr_datasets/videoplayback1.mp4","question":"Which object appears first?\nA. Cup\nB. Phone\nC. Book\nD. Bag","type":"multiple_choice","target":{"answer":"A","time":[[0.0,2.0]]}}
