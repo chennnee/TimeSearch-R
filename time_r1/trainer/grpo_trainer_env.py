@@ -581,6 +581,13 @@ class GRPOTrainer(Trainer):
             optimizers=optimizers,
         )
 
+        if args.gradient_checkpointing:
+            if hasattr(self.model, 'visual'):
+                self.model.visual.gradient_checkpointing = False
+            self.model.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False}
+            )
+
         # Reference model
         self.beta = args.beta
         # assert self.beta == 0.0, "Reference model is not supported for Qwen2-VL and Qwen2.5-VL"
@@ -852,26 +859,21 @@ class GRPOTrainer(Trainer):
             seed=self.args.seed,
         )
 
-    def _enable_gradient_checkpointing(self, model: PreTrainedModel, args: GRPOConfig) -> PreTrainedModel:
-        """Enables gradient checkpointing for the model."""
-        # Ensure use_cache is disabled
+    def _enable_gradient_checkpointing(self, model, args):
         model.config.use_cache = False
 
-        # Enable gradient checkpointing on the base model for PEFT
+        gradient_checkpointing_kwargs = {"use_reentrant": False}
+        print(f"[DEBUG] gradient_checkpointing_kwargs: {gradient_checkpointing_kwargs}")  # 加这行
+
+
         if is_peft_model(model):
-            model.base_model.gradient_checkpointing_enable()
-        # Enable gradient checkpointing for non-PEFT models
+            model.base_model.gradient_checkpointing_enable(gradient_checkpointing_kwargs=gradient_checkpointing_kwargs)
         else:
-            model.gradient_checkpointing_enable()
+            model.gradient_checkpointing_enable(gradient_checkpointing_kwargs=gradient_checkpointing_kwargs)
 
-        gradient_checkpointing_kwargs = args.gradient_checkpointing_kwargs or {}
-        use_reentrant = (
-            "use_reentrant" not in gradient_checkpointing_kwargs or gradient_checkpointing_kwargs["use_reentrant"]
-        )
-
-        if use_reentrant:
-            model.enable_input_require_grads()
-
+        # use_reentrant=False 不需要 enable_input_require_grads
+        if hasattr(model, 'visual'):
+            model.visual.gradient_checkpointing = False
         return model
 
     @profiling_decorator
@@ -1816,6 +1818,7 @@ class ReplayBuffer:
             self.buffer.pop(0)
             self.buffer.append(experience)
 
+    # 均匀随机采样函数
     def sample(self):
         p = np.ones(len(self.buffer)) / len(self.buffer)
         selection = np.random.choice(np.arange(len(self.buffer)), size=1, p=p)
@@ -1845,7 +1848,7 @@ class SSRReplayBuffer(ReplayBuffer):
             self.advantages.pop(0)
             self.buffer.append(experience)
             self.advantages.append(advantage.abs().mean())
-
+    # 按照 advantage 大小做加权随机采样，而不是均匀随机采样。
     def sample(self):
         if not self.buffer:
             raise ValueError("Buffer is empty. Cannot sample from an empty buffer.")

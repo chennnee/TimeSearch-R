@@ -7,9 +7,9 @@ executors:
     uses:
       jtype: CLIPEncoder
       with:
-        name: /path/to/your/local/siglip-model
+        name: /datachen/250010092/ChenHongjun/downloads/siglip-so400m-patch14-384
       metas:
         py_modules:
           - clip_server.executors.clip_torch
     timeout_ready: 3000000
-    replicas: 16
+    replicas: 1

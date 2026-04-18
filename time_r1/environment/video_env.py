@@ -173,6 +173,8 @@ class VideoInteraction(Environment):
         model: 可以是vllm / hf model
         avoid_mm_missing: !!! Training only.
         """
+        
+
         super().__init__()
         self.processor = processor
         self.model = model
@@ -341,7 +343,7 @@ class VideoInteraction(Environment):
         Returns:
             List of generated texts
         """
-        # 将messages_batch中的每个messages转换为json字符串
+        # 将messages_batch中的每个messages转换为字符串
         prompt_text_batch = self.processor.apply_chat_template(messages_batch, tokenize=False, add_generation_prompt=True)
         llm_inputs = []
         for idx, prompt in enumerate(prompt_text_batch):

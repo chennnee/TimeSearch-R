@@ -32,7 +32,7 @@ class SigLIPModel(CLIPModel):
     
     def build_model(self, ckpt: str, device: torch.device):
         # model = AutoModel.from_pretrained(ckpt)
-        model = AutoModel.from_pretrained(ckpt, attn_implementation="flash_attention_2", torch_dtype=torch.float16)
+        model = AutoModel.from_pretrained(ckpt, torch_dtype=torch.float16)
 
         # Optimisations
         model = (
